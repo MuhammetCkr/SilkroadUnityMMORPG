@@ -63,6 +63,41 @@ namespace SROClient.Network
         }
 
         /// <summary>
+        /// Sunucuya, üstel geri çekilme (exponential backoff) ile en fazla belirtilen
+        /// sayıda yeniden deneyerek bağlanır. Her başarısız denemeden sonra bekleme süresi
+        /// iki katına çıkar (varsayılan: 1sn, 2sn, 4sn ...).
+        /// </summary>
+        /// <param name="host">Sunucu adresi.</param>
+        /// <param name="port">Sunucu portu.</param>
+        /// <param name="maxAttempts">Toplam deneme sayısı (varsayılan 3).</param>
+        /// <param name="initialDelayMs">İlk bekleme süresi (ms), sonraki denemelerde ikiye katlanır.</param>
+        /// <returns>Bağlantı kurulabildiyse true.</returns>
+        public async Task<bool> ConnectWithRetryAsync(
+            string host, int port, int maxAttempts = 3, int initialDelayMs = 1000)
+        {
+            int delayMs = initialDelayMs;
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                try
+                {
+                    await ConnectAsync(host, port);
+                    return true;
+                }
+                catch (Exception)
+                {
+                    // Son deneme de başarısız olduysa vazgeç.
+                    if (attempt >= maxAttempts)
+                        return false;
+
+                    // Üstel geri çekilme ile bekle ve tekrar dene.
+                    await Task.Delay(delayMs);
+                    delayMs *= 2;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
         /// Bir paketi (başlık dahil hazır byte dizisi) sunucuya asenkron gönderir.
         /// </summary>
         public async Task SendPacketAsync(byte[] packet)

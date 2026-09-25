@@ -29,18 +29,21 @@ SilkroadUnityMMORPG/
 ├── Server/                      # .NET 8 sunucu çözümü
 │   ├── SROServer.sln
 │   ├── src/
-│   │   ├── SROServer.Shared/    # Ortak: paket oluşturucu/okuyucu, opcode'lar, modeller
+│   │   ├── SROServer.Shared/    # Ortak: paket oluşturucu/okuyucu, opcode'lar, modeller (SROVector3, SectorPosition)
 │   │   ├── SROServer.Auth/      # Kimlik doğrulama sunucusu (Faz 1)
-│   │   └── SROServer.GameServer/# Oyun sunucusu (Faz 2 placeholder)
+│   │   └── SROServer.GameServer/# Oyun sunucusu (Faz 2) — Entities, World, Services, Repositories, Network
 │   └── tests/
-│       └── SROServer.Auth.Tests/# xUnit + Moq birim testleri
+│       ├── SROServer.Auth.Tests/       # Auth birim testleri (xUnit + Moq)
+│       └── SROServer.GameServer.Tests/ # Dünya & hareket birim testleri (xUnit + Moq)
 │
 └── Client/                      # Unity proje iskeleti (Unity Editor'da açılır)
     └── Assets/Scripts/
-        ├── Network/             # ServerConnection, PacketBuilder/Reader, PacketHandler
-        ├── UI/                  # LoginUI, CharacterSelectUI
+        ├── Network/             # ServerConnection (reconnect), PacketBuilder/Reader, PacketHandler
+        ├── Gameplay/            # CharacterMovementController, CameraController, EntityManager, LocalPlayer
+        ├── World/               # TerrainChunkLoader, ClientSectorManager
+        ├── UI/                  # LoginUI, CharacterSelectUI, HUD/ (HUDManager, MinimapController)
         ├── Managers/            # GameManager, NetworkManager (singleton)
-        └── Models/              # PlayerData, ItemData
+        └── Models/              # PlayerData, ItemData, EntityData
 ```
 
 ---
@@ -86,7 +89,7 @@ Bağlantı ayarları `Server/src/SROServer.Auth/appsettings.json` içinden yapı
 | Faz | Kapsam | Durum |
 |-----|--------|-------|
 | **Faz 1** | Auth Server + Unity Login/Karakter Seçim ekranı | ✅ Bu depoda |
-| **Faz 2** | Dünya & Hareket (Game Server, varlık senkronizasyonu) | ⏳ Planlandı |
+| **Faz 2** | Dünya & Hareket (Game Server, varlık senkronizasyonu) | ✅ Bu depoda |
 | **Faz 3** | Envanter & Item sistemi | ⏳ Planlandı |
 | **Faz 4** | Savaş & Skill mekanikleri | ⏳ Planlandı |
 | **Faz 5** | Alchemy, Party, Guild sistemleri | ⏳ Planlandı |
@@ -101,6 +104,38 @@ Bağlantı ayarları `Server/src/SROServer.Auth/appsettings.json` içinden yapı
 - ✅ Giriş, karakter listesi ve karakter seçimi paket akışı.
 - ✅ Unity istemcisi: `LoginUI`, `CharacterSelectUI`, `NetworkManager`, `GameManager`.
 - ✅ xUnit + Moq birim testleri (5 test, tümü geçiyor).
+
+---
+
+## Faz 2 — Tamamlananlar
+### Sunucu (SROServer.GameServer)
+- ✅ LiteNetLib tabanlı oyun ağ sunucusu (`GameNetworkManager`, varsayılan port 15001) — bağlantı el sıkışması, oyuncu yaşam döngüsü.
+- ✅ Bölge (sektör) tabanlı dünya yönetimi: `WorldManager` (singleton), `Region` (varlık giriş/çıkış olayları, broadcast), `SectorManager` (bölge geçişleri).
+- ✅ Silkroad 192 birimlik sektör sistemi: `SROVector3` ve `SectorPosition` (dünya ↔ sektör dönüşümü) — `SROServer.Shared`.
+- ✅ Varlık modeli: `EntityBase`, `PlayerEntity`, `MonsterEntity`.
+- ✅ Otoriter hareket servisi (`MovementService`): mesafe doğrulaması (anti-cheat), bölge geçişi tespiti, throttle'lı (5sn) pozisyon kaydı.
+- ✅ Mob üretim servisi (`SpawnService`) + veritabanı repository'leri (`CharacterRepository`, `SpawnRepository`, Dapper).
+- ✅ Paket işleme (`GamePacketHandler`): move/stop/sector istekleri; spawn/despawn/move/init paket üretimi.
+- ✅ Sabit adımlı oyun döngüsü (varsayılan 100ms tick) ve graceful shutdown (`Program.cs`).
+- ✅ xUnit + Moq birim testleri (`SROServer.GameServer.Tests`, 12 test, tümü geçiyor).
+
+### İstemci (Unity)
+- ✅ `CharacterMovementController`: WASD + tıkla-git hareket, `CharacterController` ile fizik, sunucuya throttle'lı `C_MOVE_REQUEST`.
+- ✅ `CameraController`: üçüncü şahıs takip kamerası (tekerlek zoom, sağ tık orbit, yumuşak takip).
+- ✅ `EntityManager`: uzak varlık spawn/despawn/move interpolasyonu; `S_INIT_DATA` ve HP/MP güncellemeleri.
+- ✅ `LocalPlayer`: yerel oyuncu durumu + HP/MP/seviye değişim olayları.
+- ✅ HUD: `HUDManager` (HP/MP çubukları, ad/seviye), `MinimapController` (tepeden bakışlı mini harita).
+- ✅ Dünya: `TerrainChunkLoader` (3x3 parça yükleme), `ClientSectorManager` (`C_SECTOR_CHANGE` bildirimi).
+- ✅ `ServerConnection`: üstel geri çekilmeli yeniden bağlanma (3 deneme).
+
+> Not: Unity istemci scriptleri Unity Editor içinde derlenir; sunucu çözümü `.NET 8 SDK` ile bu depoda 0 hata ile derlenir.
+
+### Oyun Sunucusunu Çalıştırma
+```bash
+cd Server
+dotnet run --project src/SROServer.GameServer   # Varsayılan port 15001
+```
+Ayarlar `Server/src/SROServer.GameServer/appsettings.json` içindedir (`GamePort`, `TickRateMs`, veritabanı bağlantı dizesi, `PreloadRegions`).
 
 ---
 
