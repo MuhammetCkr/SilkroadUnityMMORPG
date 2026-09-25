@@ -18,11 +18,19 @@ public sealed class GamePacketHandler
 {
     private readonly WorldManager _world;
     private readonly MovementService _movementService;
+    private readonly InventoryService _inventoryService;
+    private readonly ShopService _shopService;
 
-    public GamePacketHandler(WorldManager world, MovementService movementService)
+    public GamePacketHandler(
+        WorldManager world,
+        MovementService movementService,
+        InventoryService inventoryService,
+        ShopService shopService)
     {
         _world = world;
         _movementService = movementService;
+        _inventoryService = inventoryService;
+        _shopService = shopService;
     }
 
     // ==================== Gelen istek işleyicileri ====================
@@ -99,6 +107,128 @@ public sealed class GamePacketHandler
 
         Log.Debug("Sektör değişim bildirimi: {Char} -> Region={Region}",
             player.CharName, regionId);
+    }
+
+    // ==================== Faz 3: Envanter & Item işleyicileri ====================
+
+    /// <summary>
+    /// C_INVENTORY_MOVE: [fromSlot(byte)] [toSlot(byte)]. Eşyayı taşır ve iki slotun
+    /// güncel durumunu S_INVENTORY_UPDATE ile geri gönderir.
+    /// </summary>
+    public async Task HandleInventoryMoveAsync(PlayerEntity player, PacketReader reader)
+    {
+        byte fromSlot = reader.ReadByte();
+        byte toSlot = reader.ReadByte();
+
+        ItemMoveResult result = await _inventoryService.MoveItemAsync(player, fromSlot, toSlot);
+        if (result == ItemMoveResult.Success)
+        {
+            // Kaynak artık boş, hedefte eşya var.
+            ItemData? moved = player.Inventory.FirstOrDefault(s => s.Slot == toSlot)?.Item;
+            Send(player.Connection, _inventoryService.BuildSlotUpdatePacket(fromSlot, null));
+            Send(player.Connection, _inventoryService.BuildSlotUpdatePacket(toSlot, moved));
+        }
+        else
+        {
+            Log.Debug("Envanter taşıma reddedildi: {Char} {From}->{To} ({Result})",
+                player.CharName, fromSlot, toSlot, result);
+            // Reddedilirse mevcut envanteri yeniden gönder (istemci senkronu).
+            Send(player.Connection, _inventoryService.BuildInventoryPacket(player.Inventory));
+        }
+    }
+
+    /// <summary>
+    /// C_ITEM_USE: [slot(byte)]. Eşyayı kullanır; sonucu ve güncel slot durumunu gönderir.
+    /// </summary>
+    public async Task HandleItemUseAsync(PlayerEntity player, PacketReader reader)
+    {
+        byte slot = reader.ReadByte();
+        UseResult result = await _inventoryService.UseItemAsync(player, slot);
+
+        byte[] resultPacket = new PacketBuilder(PacketOpcodes.S_ITEM_USE_RESULT)
+            .WriteByte(slot)
+            .WriteByte((byte)result)
+            .WriteInt(player.HP)
+            .WriteInt(player.MP)
+            .Build();
+        Send(player.Connection, resultPacket);
+
+        if (result == UseResult.Success)
+        {
+            ItemData? item = player.Inventory.FirstOrDefault(s => s.Slot == slot)?.Item;
+            Send(player.Connection, _inventoryService.BuildSlotUpdatePacket(slot, item));
+        }
+    }
+
+    /// <summary>
+    /// C_ITEM_DROP: [slot(byte)]. Eşyayı düşürür (siler); sonucu ve slot durumunu gönderir.
+    /// </summary>
+    public async Task HandleItemDropAsync(PlayerEntity player, PacketReader reader)
+    {
+        byte slot = reader.ReadByte();
+        DropResult result = await _inventoryService.DropItemAsync(player, slot);
+
+        byte[] resultPacket = new PacketBuilder(PacketOpcodes.S_ITEM_DROP_RESULT)
+            .WriteByte(slot)
+            .WriteByte((byte)result)
+            .Build();
+        Send(player.Connection, resultPacket);
+
+        if (result == DropResult.Success)
+            Send(player.Connection, _inventoryService.BuildSlotUpdatePacket(slot, null));
+    }
+
+    /// <summary>
+    /// C_SHOP_BUY: [refItemId(int)] [targetSlot(byte)]. Eşyayı satın alır; sonucu,
+    /// güncel altını ve yeni slot durumunu gönderir.
+    /// </summary>
+    public async Task HandleShopBuyAsync(PlayerEntity player, PacketReader reader)
+    {
+        int refItemId = reader.ReadInt();
+        byte targetSlot = reader.ReadByte();
+
+        BuyResult result = await _shopService.BuyItemAsync(player, refItemId, targetSlot);
+
+        byte[] resultPacket = new PacketBuilder(PacketOpcodes.S_SHOP_BUY_RESULT)
+            .WriteByte((byte)result)
+            .WriteLong(player.Gold)
+            .Build();
+        Send(player.Connection, resultPacket);
+
+        if (result == BuyResult.Success)
+        {
+            InventorySlot? added = player.Inventory.LastOrDefault(s => s.Item?.RefItemId == refItemId);
+            if (added != null)
+                Send(player.Connection, _inventoryService.BuildSlotUpdatePacket(added.Slot, added.Item));
+        }
+    }
+
+    /// <summary>
+    /// C_SHOP_SELL: [slot(byte)]. Eşyayı satar; sonucu, güncel altını ve boş slotu gönderir.
+    /// </summary>
+    public async Task HandleShopSellAsync(PlayerEntity player, PacketReader reader)
+    {
+        byte slot = reader.ReadByte();
+        SellResult result = await _shopService.SellItemAsync(player, slot);
+
+        byte[] resultPacket = new PacketBuilder(PacketOpcodes.S_SHOP_SELL_RESULT)
+            .WriteByte(slot)
+            .WriteByte((byte)result)
+            .WriteLong(player.Gold)
+            .Build();
+        Send(player.Connection, resultPacket);
+
+        if (result == SellResult.Success)
+            Send(player.Connection, _inventoryService.BuildSlotUpdatePacket(slot, null));
+    }
+
+    /// <summary>
+    /// Oyuncu dünyaya girdiğinde envanterini yükler ve S_INVENTORY_DATA gönderir.
+    /// </summary>
+    public async Task SendInventoryOnJoinAsync(PlayerEntity player)
+    {
+        List<InventorySlot> slots = await _inventoryService.LoadInventoryAsync(player);
+        Send(player.Connection, _inventoryService.BuildInventoryPacket(slots));
     }
 
     // ==================== Paket üreticileri ====================

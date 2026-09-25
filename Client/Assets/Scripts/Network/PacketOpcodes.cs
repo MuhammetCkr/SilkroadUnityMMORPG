@@ -36,5 +36,24 @@ namespace SROClient.Network
         // Sector (bölge)
         public const ushort C_SECTOR_CHANGE    = 0x7040; // İstemci: sektör değişimi bildirimi
         public const ushort S_SECTOR_ACK       = 0x7041; // Sunucu: sektör değişimi onayı
+
+        // --- Game (oyun) opcode'ları — Faz 3 (Envanter & Item) ---
+
+        // Envanter
+        public const ushort C_INVENTORY_MOVE    = 0x7050; // İstemci: envanterde eşya taşıma
+        public const ushort S_INVENTORY_DATA    = 0x7051; // Sunucu: tam envanter verisi
+        public const ushort S_INVENTORY_UPDATE  = 0x7052; // Sunucu: tek slot güncelleme
+
+        // Item kullanımı ve düşürme
+        public const ushort C_ITEM_USE          = 0x7053; // İstemci: eşya kullanma
+        public const ushort S_ITEM_USE_RESULT   = 0x7054; // Sunucu: eşya kullanma sonucu
+        public const ushort C_ITEM_DROP         = 0x7055; // İstemci: eşya düşürme
+        public const ushort S_ITEM_DROP_RESULT  = 0x7056; // Sunucu: eşya düşürme sonucu
+
+        // Dükkan (shop)
+        public const ushort C_SHOP_BUY          = 0x7060; // İstemci: satın alma
+        public const ushort S_SHOP_BUY_RESULT   = 0x7061; // Sunucu: satın alma sonucu
+        public const ushort C_SHOP_SELL         = 0x7062; // İstemci: satma
+        public const ushort S_SHOP_SELL_RESULT  = 0x7063; // Sunucu: satma sonucu
     }
 }

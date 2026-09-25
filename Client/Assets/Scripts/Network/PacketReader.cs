@@ -54,6 +54,16 @@ namespace SROClient.Network
             return value;
         }
 
+        public long ReadLong()
+        {
+            EnsureAvailable(8);
+            long value = 0;
+            for (int i = 0; i < 8; i++)
+                value |= (long)_buffer[_position + i] << (8 * i);
+            _position += 8;
+            return value;
+        }
+
         public float ReadFloat()
         {
             EnsureAvailable(4);

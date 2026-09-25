@@ -50,6 +50,14 @@ public sealed class PacketBuilder
         return this;
     }
 
+    /// <summary>Payload'a 8 byte'lık işaretli uzun tam sayı (long) ekler.</summary>
+    public PacketBuilder WriteLong(long value)
+    {
+        for (int i = 0; i < 8; i++)
+            _payload.Add((byte)((value >> (8 * i)) & 0xFF));
+        return this;
+    }
+
     /// <summary>Payload'a 4 byte'lık ondalık sayı (float) ekler.</summary>
     public PacketBuilder WriteFloat(float value)
     {

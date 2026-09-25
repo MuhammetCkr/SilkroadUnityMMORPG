@@ -173,6 +173,9 @@ public sealed class GameNetworkManager : IDisposable
             // 1) Oyuncunun kendi başlangıç verisini gönder.
             Send(peer, _packetHandler.BuildInitDataPacket(player));
 
+            // 1b) Envanteri yükle ve gönder (Faz 3).
+            await _packetHandler.SendInventoryOnJoinAsync(player);
+
             // 2) Aynı bölgedeki mevcut diğer varlıkların spawn'larını yeni oyuncuya gönder.
             Region region = _world.GetOrCreateRegion(player.RegionId);
             foreach (EntityBase existing in region.Entities.Values)
@@ -212,6 +215,7 @@ public sealed class GameNetworkManager : IDisposable
             MaxHP = data?.MaxHP ?? 100,
             MP = data?.MP ?? 100,
             MaxMP = data?.MaxMP ?? 100,
+            Gold = data?.Gold ?? 0,
             Position = pos,
             RegionId = regionId,
             Connection = peer,
@@ -265,6 +269,27 @@ public sealed class GameNetworkManager : IDisposable
 
                 case PacketOpcodes.C_SECTOR_CHANGE:
                     _packetHandler.HandleSectorChange(player, reader);
+                    break;
+
+                // --- Faz 3: Envanter & Item ---
+                case PacketOpcodes.C_INVENTORY_MOVE:
+                    await _packetHandler.HandleInventoryMoveAsync(player, reader);
+                    break;
+
+                case PacketOpcodes.C_ITEM_USE:
+                    await _packetHandler.HandleItemUseAsync(player, reader);
+                    break;
+
+                case PacketOpcodes.C_ITEM_DROP:
+                    await _packetHandler.HandleItemDropAsync(player, reader);
+                    break;
+
+                case PacketOpcodes.C_SHOP_BUY:
+                    await _packetHandler.HandleShopBuyAsync(player, reader);
+                    break;
+
+                case PacketOpcodes.C_SHOP_SELL:
+                    await _packetHandler.HandleShopSellAsync(player, reader);
                     break;
 
                 default:

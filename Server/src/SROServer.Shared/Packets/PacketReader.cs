@@ -66,6 +66,17 @@ public sealed class PacketReader
         return value;
     }
 
+    /// <summary>Payload'dan 8 byte'lık işaretli uzun tam sayı (long) okur.</summary>
+    public long ReadLong()
+    {
+        EnsureAvailable(8);
+        long value = 0;
+        for (int i = 0; i < 8; i++)
+            value |= (long)_buffer[_position + i] << (8 * i);
+        _position += 8;
+        return value;
+    }
+
     /// <summary>Payload'dan 4 byte'lık ondalık sayı (float) okur.</summary>
     public float ReadFloat()
     {

@@ -36,7 +36,8 @@ public sealed class CharacterRepository : ICharacterRepository
         const string sql = @"
             SELECT CharID, UserJID, CharName16, CurLevel,
                    HP, MaxHP, MP, MaxMP,
-                   CurPosX, CurPosY, CurPosZ, LatestRegion AS CurSect
+                   CurPosX, CurPosY, CurPosZ, LatestRegion AS CurSect,
+                   Gold
             FROM _User
             WHERE UserJID = @JID AND CharName16 = @CharName AND Deleted = 0";
 

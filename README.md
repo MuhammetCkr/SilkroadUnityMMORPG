@@ -29,9 +29,9 @@ SilkroadUnityMMORPG/
 ├── Server/                      # .NET 8 sunucu çözümü
 │   ├── SROServer.sln
 │   ├── src/
-│   │   ├── SROServer.Shared/    # Ortak: paket oluşturucu/okuyucu, opcode'lar, modeller (SROVector3, SectorPosition)
+│   │   ├── SROServer.Shared/    # Ortak: paket oluşturucu/okuyucu, opcode'lar, modeller (SROVector3, SectorPosition, ItemData, InventorySlot)
 │   │   ├── SROServer.Auth/      # Kimlik doğrulama sunucusu (Faz 1)
-│   │   └── SROServer.GameServer/# Oyun sunucusu (Faz 2) — Entities, World, Services, Repositories, Network
+│   │   └── SROServer.GameServer/# Oyun sunucusu (Faz 2-3) — Entities, World, Services, Repositories, Cache, Network
 │   └── tests/
 │       ├── SROServer.Auth.Tests/       # Auth birim testleri (xUnit + Moq)
 │       └── SROServer.GameServer.Tests/ # Dünya & hareket birim testleri (xUnit + Moq)
@@ -40,8 +40,9 @@ SilkroadUnityMMORPG/
     └── Assets/Scripts/
         ├── Network/             # ServerConnection (reconnect), PacketBuilder/Reader, PacketHandler
         ├── Gameplay/            # CharacterMovementController, CameraController, EntityManager, LocalPlayer
+        ├── Inventory/           # InventoryManager (singleton), InventorySlotData (Faz 3)
         ├── World/               # TerrainChunkLoader, ClientSectorManager
-        ├── UI/                  # LoginUI, CharacterSelectUI, HUD/ (HUDManager, MinimapController)
+        ├── UI/                  # LoginUI, CharacterSelectUI, HUD/, Inventory/ (InventoryUI, InventorySlotUI, ItemTooltip, DragDropHandler)
         ├── Managers/            # GameManager, NetworkManager (singleton)
         └── Models/              # PlayerData, ItemData, EntityData
 ```
@@ -54,7 +55,9 @@ SilkroadUnityMMORPG/
 |-------|--------------|------------|
 | `UserEntity` | `TB_User` | `SRO_VT_ACCOUNT` |
 | `Character` / `PlayerData` | `_User` | `SRO_VT_SHARD` |
-| `ItemData` (Faz 3) | `_Items` | `SRO_VT_SHARD` |
+| `ItemData` / `InventorySlot` (Faz 3) | `_Items` + `_Inventory` | `SRO_VT_SHARD` |
+| `ItemReference` (Faz 3) | `_RefObjCommon` + `_RefObjItem` | `SRO_VT_SHARD` |
+| `MagicOptReference` (Faz 3) | `_RefMagicOpt` | `SRO_VT_SHARD` |
 
 ---
 
@@ -90,7 +93,7 @@ Bağlantı ayarları `Server/src/SROServer.Auth/appsettings.json` içinden yapı
 |-----|--------|-------|
 | **Faz 1** | Auth Server + Unity Login/Karakter Seçim ekranı | ✅ Bu depoda |
 | **Faz 2** | Dünya & Hareket (Game Server, varlık senkronizasyonu) | ✅ Bu depoda |
-| **Faz 3** | Envanter & Item sistemi | ⏳ Planlandı |
+| **Faz 3** | Envanter & Item sistemi | ✅ Bu depoda |
 | **Faz 4** | Savaş & Skill mekanikleri | ⏳ Planlandı |
 | **Faz 5** | Alchemy, Party, Guild sistemleri | ⏳ Planlandı |
 
@@ -127,6 +130,26 @@ Bağlantı ayarları `Server/src/SROServer.Auth/appsettings.json` içinden yapı
 - ✅ HUD: `HUDManager` (HP/MP çubukları, ad/seviye), `MinimapController` (tepeden bakışlı mini harita).
 - ✅ Dünya: `TerrainChunkLoader` (3x3 parça yükleme), `ClientSectorManager` (`C_SECTOR_CHANGE` bildirimi).
 - ✅ `ServerConnection`: üstel geri çekilmeli yeniden bağlanma (3 deneme).
+
+> Not: Unity istemci scriptleri Unity Editor içinde derlenir; sunucu çözümü `.NET 8 SDK` ile bu depoda 0 hata ile derlenir.
+
+## Faz 3 — Tamamlananlar
+### Sunucu (SROServer.GameServer)
+- ✅ Item veri modelleri: `ItemData` (item örneği — RefItemID, OptLevel, büyü seçenekleri, dayanıklılık, adet) ve `InventorySlot` (slot ↔ item eşlemesi) — `SROServer.Shared`.
+- ✅ `ItemReferenceCache` (singleton): `_RefObjCommon`, `_RefObjItem` ve `_RefMagicOpt` referans tablolarını bellekte önbelleğe alır (`ConcurrentDictionary`), item adı/fiyat/tip çözümlemesi sağlar.
+- ✅ `InventoryRepository` (Dapper, transaction'lı): envanter yükleme, slot güncelleme/temizleme, item taşıma ve altın güncelleme — gerçek `_Inventory` / `_Items` tabloları üzerinden.
+- ✅ `InventoryService`: item taşıma (slot swap/merge), kullanma (iksir ile HP yenileme), yere bırakma, toplam ağırlık hesaplama ve aşırı yük kontrolü; envanter/slot güncelleme paketleri üretir.
+- ✅ `ShopService`: NPC dükkânından item satın alma (altın + slot doğrulaması) ve satma (satış fiyatı = fiyat / 2).
+- ✅ Paket işleyicileri (`GamePacketHandler`): envanter taşıma, item kullanma, item bırakma, dükkân alma/satma istekleri + dünyaya katılırken envanter gönderimi.
+- ✅ Paket altyapısı: `PacketBuilder.WriteLong` / `PacketReader.ReadLong` (64-bit item/altın değerleri) ve Faz 3 opcode'ları.
+- ✅ xUnit + Moq birim testleri (`InventoryServiceTests`, `ItemReferenceCacheTests` — 9 yeni test; `SROServer.GameServer.Tests` toplam 21 test, tümü geçiyor).
+
+### İstemci (Unity)
+- ✅ `InventoryManager` (singleton): 112 slotluk envanter durumu, altın takibi, sunucu paket işleyicileri; `OnSlotUpdated` / `OnSlotCleared` / `OnGoldUpdated` olayları.
+- ✅ `InventoryUI`: `I` tuşu ile envanter panelini aç/kapat, slot ızgarası yönetimi.
+- ✅ `InventorySlotUI`: slot görselleştirme, sürükle-bırak ve tooltip arayüzleri (`IBeginDragHandler`, `IDropHandler`, `IPointerEnterHandler`).
+- ✅ `DragDropHandler` (singleton): slotlar arası sürükle-bırak taşıma ve sunucuya taşıma isteği gönderimi.
+- ✅ `ItemTooltip` (singleton): item üzerine gelince ad/açıklama/istatistik gösterimi.
 
 > Not: Unity istemci scriptleri Unity Editor içinde derlenir; sunucu çözümü `.NET 8 SDK` ile bu depoda 0 hata ile derlenir.
 
