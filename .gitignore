@@ -104,3 +104,52 @@ InitTestScene*.unity*
 
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
+
+
+# ============================================================
+# .NET 8 Sunucu (Server/) — build çıktıları
+# ============================================================
+[Bb]in/
+[Oo]bj/
+Server/**/bin/
+Server/**/obj/
+*.dll
+*.exe
+
+# NuGet
+*.nupkg
+*.snupkg
+project.lock.json
+project.fragment.lock.json
+artifacts/
+.nuget/
+
+# .NET kullanıcı/gizli ayarlar
+*.user
+*.suo
+secrets.json
+appsettings.*.local.json
+
+# ============================================================
+# ÖNEMLİ: Sunucu proje dosyaları versiyon kontrolüne DAHİL edilmeli.
+# Unity varsayılan kuralları *.csproj ve *.sln dosyalarını yok sayar;
+# aşağıdaki negatif kurallar Server/ altındakileri geri dahil eder.
+# ============================================================
+!Server/**/*.csproj
+!Server/SROServer.sln
+
+# ============================================================
+# SQL Server / veritabanı yedekleri (büyük binary dosyalar)
+# ============================================================
+*.bak
+*.mdf
+*.ldf
+*.ndf
+
+# ============================================================
+# IDE / OS
+# ============================================================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
