@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using LiteNetLib;
 using SROServer.Shared.Models;
 
@@ -45,4 +46,18 @@ public sealed class PlayerEntity : EntityBase
 
     /// <summary>Hareket halindeyse gidilen hedef pozisyon.</summary>
     public SROVector3 TargetPosition { get; set; }
+
+    // --- Envanter (Faz 3) ---
+
+    /// <summary>Oyuncunun envanter slotları (ekipman + çanta).</summary>
+    public List<InventorySlot> Inventory { get; set; } = new();
+
+    /// <summary>Taşınan toplam ağırlık (envanterdeki eşyaların toplamı).</summary>
+    public int CurrentWeight { get; set; }
+
+    /// <summary>Taşınabilecek maksimum ağırlık (seviyeye göre belirlenir).</summary>
+    public int MaxWeight { get; set; } = 10000;
+
+    /// <summary>Oyuncunun altın (para) miktarı.</summary>
+    public long Gold { get; set; }
 }

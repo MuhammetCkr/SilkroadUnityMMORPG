@@ -45,6 +45,14 @@ namespace SROClient.Network
             return this;
         }
 
+        /// <summary>Payload'a 8 byte'lık işaretli long ekler (little-endian).</summary>
+        public PacketBuilder WriteLong(long value)
+        {
+            for (int i = 0; i < 8; i++)
+                _payload.Add((byte)((value >> (8 * i)) & 0xFF));
+            return this;
+        }
+
         /// <summary>Payload'a 4 byte'lık float ekler.</summary>
         public PacketBuilder WriteFloat(float value)
         {

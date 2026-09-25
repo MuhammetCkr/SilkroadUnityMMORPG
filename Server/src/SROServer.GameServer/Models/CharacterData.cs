@@ -31,4 +31,7 @@ public sealed class CharacterData
 
     /// <summary>Bulunduğu sektör (RegionID) (_User.CurSect / LatestRegion).</summary>
     public short CurSect { get; set; }
+
+    /// <summary>Karakterin altın (para) miktarı (_User.Gold / _Char.RemainGold).</summary>
+    public long Gold { get; set; }
 }

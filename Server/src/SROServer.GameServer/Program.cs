@@ -1,6 +1,8 @@
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using Serilog;
 using Serilog.Events;
+using SROServer.GameServer.Cache;
 using SROServer.GameServer.Network;
 using SROServer.GameServer.Repositories;
 using SROServer.GameServer.Services;
@@ -60,10 +62,25 @@ try
 
     var characterRepository = new CharacterRepository(shardCs);
     var spawnRepository = new SpawnRepository(shardCs);
+    var inventoryRepository = new InventoryRepository(shardCs);
+
+    // Eşya referans önbelleğini yükle (veritabanı yoksa boş kalır, sunucu yine başlar).
+    ItemReferenceCache itemCache = ItemReferenceCache.Instance;
+    try
+    {
+        await using var refConnection = new SqlConnection(shardCs);
+        await itemCache.LoadAsync(refConnection);
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "Eşya referans önbelleği yüklenemedi (veritabanı yok olabilir).");
+    }
 
     var movementService = new MovementService(world, sectorManager, characterRepository);
     var spawnService = new SpawnService(world, spawnRepository);
-    var packetHandler = new GamePacketHandler(world, movementService);
+    var inventoryService = new InventoryService(inventoryRepository, itemCache);
+    var shopService = new ShopService(inventoryRepository, itemCache);
+    var packetHandler = new GamePacketHandler(world, movementService, inventoryService, shopService);
 
     // 5) Spawn noktalarını yükle ve önceden tanımlı bölgelerde mob üret
     //    (veritabanı yoksa uyarı loglanır, sunucu yine de başlar).
