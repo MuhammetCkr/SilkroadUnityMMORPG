@@ -1,0 +1,50 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{E6B9968D-92CD-4026-9887-3082BF11F4F5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SROServer.Shared", "src\SROServer.Shared\SROServer.Shared.csproj", "{35DD8B11-5464-4D5A-90AD-3363493E62A5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SROServer.Auth", "src\SROServer.Auth\SROServer.Auth.csproj", "{889F5639-EF2E-409C-86A8-7D84AD154DED}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SROServer.GameServer", "src\SROServer.GameServer\SROServer.GameServer.csproj", "{6B38DDBC-A7C9-48AD-9072-43F1810A5363}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{E37D70EA-711C-4C56-A4EB-56C752756FBA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SROServer.Auth.Tests", "tests\SROServer.Auth.Tests\SROServer.Auth.Tests.csproj", "{74CFD2CE-BF14-4A6A-AC13-9DD372BF472E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{35DD8B11-5464-4D5A-90AD-3363493E62A5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{35DD8B11-5464-4D5A-90AD-3363493E62A5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{35DD8B11-5464-4D5A-90AD-3363493E62A5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{35DD8B11-5464-4D5A-90AD-3363493E62A5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{889F5639-EF2E-409C-86A8-7D84AD154DED}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{889F5639-EF2E-409C-86A8-7D84AD154DED}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{889F5639-EF2E-409C-86A8-7D84AD154DED}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{889F5639-EF2E-409C-86A8-7D84AD154DED}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6B38DDBC-A7C9-48AD-9072-43F1810A5363}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6B38DDBC-A7C9-48AD-9072-43F1810A5363}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6B38DDBC-A7C9-48AD-9072-43F1810A5363}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6B38DDBC-A7C9-48AD-9072-43F1810A5363}.Release|Any CPU.Build.0 = Release|Any CPU
+		{74CFD2CE-BF14-4A6A-AC13-9DD372BF472E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{74CFD2CE-BF14-4A6A-AC13-9DD372BF472E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{74CFD2CE-BF14-4A6A-AC13-9DD372BF472E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{74CFD2CE-BF14-4A6A-AC13-9DD372BF472E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{35DD8B11-5464-4D5A-90AD-3363493E62A5} = {E6B9968D-92CD-4026-9887-3082BF11F4F5}
+		{889F5639-EF2E-409C-86A8-7D84AD154DED} = {E6B9968D-92CD-4026-9887-3082BF11F4F5}
+		{6B38DDBC-A7C9-48AD-9072-43F1810A5363} = {E6B9968D-92CD-4026-9887-3082BF11F4F5}
+		{74CFD2CE-BF14-4A6A-AC13-9DD372BF472E} = {E37D70EA-711C-4C56-A4EB-56C752756FBA}
+	EndGlobalSection
+EndGlobal
