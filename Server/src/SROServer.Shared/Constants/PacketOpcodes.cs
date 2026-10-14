@@ -55,4 +55,33 @@ public static class PacketOpcodes
     public const ushort S_SHOP_BUY_RESULT   = 0x7061; // Sunucu: satın alma sonucu
     public const ushort C_SHOP_SELL         = 0x7062; // İstemci: eşya satma isteği
     public const ushort S_SHOP_SELL_RESULT  = 0x7063; // Sunucu: satma sonucu
+
+    // --- Game (oyun) opcode'ları — Faz 4 (Savaş & Skill) ---
+
+    // Savaş
+    public const ushort C_ATTACK_REQUEST   = 0x7100; // İstemci: temel saldırı isteği (hedef)
+    public const ushort S_ATTACK_RESULT    = 0x7101; // Sunucu: saldırı sonucu (hasar/kritik/ölüm)
+    public const ushort S_ENTITY_DEATH     = 0x7102; // Sunucu: bir varlık öldü
+    public const ushort C_RESURRECTION     = 0x7103; // İstemci: diriliş isteği
+
+    // Skill (yetenek)
+    public const ushort C_SKILL_USE        = 0x7110; // İstemci: yetenek kullanma isteği
+    public const ushort S_SKILL_RESULT     = 0x7111; // Sunucu: yetenek kullanım sonucu
+    public const ushort S_SKILL_CAST       = 0x7112; // Sunucu: yetenek yayını (animasyon/efekt)
+
+    // --- Game (oyun) opcode'ları — Faz 5 (Party, Guild, Alkimi) ---
+
+    // Party (grup)
+    public const ushort C_PARTY_CREATE     = 0x7200; // İstemci: grup oluştur
+    public const ushort C_PARTY_INVITE     = 0x7201; // İstemci: gruba davet et
+    public const ushort S_PARTY_DATA       = 0x7202; // Sunucu: tam grup verisi
+    public const ushort S_PARTY_UPDATE     = 0x7203; // Sunucu: grup üyesi güncelleme
+
+    // Guild (lonca)
+    public const ushort C_GUILD_CREATE     = 0x7210; // İstemci: lonca oluştur
+    public const ushort S_GUILD_DATA       = 0x7211; // Sunucu: lonca verisi
+
+    // Alchemy (simya/güçlendirme)
+    public const ushort C_ALCHEMY_REQUEST  = 0x7220; // İstemci: eşya güçlendirme isteği
+    public const ushort S_ALCHEMY_RESULT   = 0x7221; // Sunucu: güçlendirme sonucu
 }

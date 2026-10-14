@@ -55,5 +55,34 @@ namespace SROClient.Network
         public const ushort S_SHOP_BUY_RESULT   = 0x7061; // Sunucu: satın alma sonucu
         public const ushort C_SHOP_SELL         = 0x7062; // İstemci: satma
         public const ushort S_SHOP_SELL_RESULT  = 0x7063; // Sunucu: satma sonucu
+
+        // --- Game (oyun) opcode'ları — Faz 4 (Savaş & Skill) ---
+
+        // Savaş
+        public const ushort C_ATTACK_REQUEST    = 0x7100; // İstemci: temel saldırı isteği
+        public const ushort S_ATTACK_RESULT     = 0x7101; // Sunucu: saldırı sonucu (hasar)
+        public const ushort S_ENTITY_DEATH      = 0x7102; // Sunucu: varlık öldü bildirimi
+        public const ushort C_RESURRECTION      = 0x7103; // İstemci: dirilme isteği
+
+        // Yetenek (skill)
+        public const ushort C_SKILL_USE         = 0x7110; // İstemci: yetenek kullanma isteği
+        public const ushort S_SKILL_RESULT      = 0x7111; // Sunucu: yetenek kullanma sonucu
+        public const ushort S_SKILL_CAST        = 0x7112; // Sunucu: yetenek yayını (görsel)
+
+        // --- Game (oyun) opcode'ları — Faz 5 (Alkimi, Party, Guild) ---
+
+        // Grup (party)
+        public const ushort C_PARTY_CREATE      = 0x7200; // İstemci: grup oluşturma
+        public const ushort C_PARTY_INVITE      = 0x7201; // İstemci: gruba davet
+        public const ushort S_PARTY_DATA        = 0x7202; // Sunucu: tam grup verisi
+        public const ushort S_PARTY_UPDATE      = 0x7203; // Sunucu: grup güncellemesi
+
+        // Lonca (guild)
+        public const ushort C_GUILD_CREATE      = 0x7210; // İstemci: lonca oluşturma
+        public const ushort S_GUILD_DATA        = 0x7211; // Sunucu: tam lonca verisi
+
+        // Alkimi (güçlendirme)
+        public const ushort C_ALCHEMY_REQUEST   = 0x7220; // İstemci: eşya güçlendirme isteği
+        public const ushort S_ALCHEMY_RESULT    = 0x7221; // Sunucu: güçlendirme sonucu
     }
 }
