@@ -45,4 +45,21 @@ public sealed class MonsterEntity : EntityBase
 
     /// <summary>Aggro (saldırı tetikleme) mesafesi.</summary>
     public float AggroRange { get; set; } = 100f;
+
+    // --- Savaş değerleri (Faz 4) ---
+
+    /// <summary>Canavar seviyesi.</summary>
+    public byte Level { get; set; } = 1;
+
+    /// <summary>Saldırı gücü (oyuncuya verdiği temel hasar).</summary>
+    public int AttackPower { get; set; } = 10;
+
+    /// <summary>Savunma değeri (aldığı hasarı azaltır).</summary>
+    public int Defense { get; set; }
+
+    /// <summary>Öldürüldüğünde verilen deneyim puanı.</summary>
+    public long ExpReward { get; set; } = 50;
+
+    /// <summary>Respawn (yeniden üretim) gecikmesi, saniye.</summary>
+    public int RespawnDelaySeconds { get; set; } = 30;
 }

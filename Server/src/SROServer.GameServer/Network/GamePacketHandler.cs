@@ -20,17 +20,35 @@ public sealed class GamePacketHandler
     private readonly MovementService _movementService;
     private readonly InventoryService _inventoryService;
     private readonly ShopService _shopService;
+    private readonly CombatService _combatService;
+    private readonly SkillService _skillService;
+    private readonly AlchemyService _alchemyService;
+    private readonly PartyService _partyService;
+    private readonly GuildService _guildService;
+    private readonly SpawnService _spawnService;
 
     public GamePacketHandler(
         WorldManager world,
         MovementService movementService,
         InventoryService inventoryService,
-        ShopService shopService)
+        ShopService shopService,
+        CombatService combatService,
+        SkillService skillService,
+        AlchemyService alchemyService,
+        PartyService partyService,
+        GuildService guildService,
+        SpawnService spawnService)
     {
         _world = world;
         _movementService = movementService;
         _inventoryService = inventoryService;
         _shopService = shopService;
+        _combatService = combatService;
+        _skillService = skillService;
+        _alchemyService = alchemyService;
+        _partyService = partyService;
+        _guildService = guildService;
+        _spawnService = spawnService;
     }
 
     // ==================== Gelen istek işleyicileri ====================
@@ -231,7 +249,227 @@ public sealed class GamePacketHandler
         Send(player.Connection, _inventoryService.BuildInventoryPacket(slots));
     }
 
+    // ==================== Faz 4: Savaş & Skill işleyicileri ====================
+
+    /// <summary>
+    /// C_ATTACK_REQUEST: [targetId(int)]. Hedefe temel saldırı uygular; sonucu bölgeye
+    /// yayınlar ve hedef öldüyse S_ENTITY_DEATH gönderip (canavarsa) respawn zamanlar.
+    /// </summary>
+    public async Task HandleAttackRequestAsync(PlayerEntity player, PacketReader reader)
+    {
+        uint targetId = (uint)reader.ReadInt();
+        EntityBase? target = _world.GetEntity(targetId);
+        if (target == null || target.State == EntityState.Dead)
+            return;
+
+        player.TargetEntityId = targetId;
+        CombatResult result = await _combatService.ProcessAttackAsync(player, target);
+
+        byte[] attackPacket = BuildAttackResultPacket(result);
+        BroadcastToRegion(player.RegionId, attackPacket, null);
+
+        if (result.IsTargetDead)
+            await HandleEntityDeathAsync(target);
+    }
+
+    /// <summary>
+    /// C_SKILL_USE: [skillId(int)] [targetId(int)]. Yeteneği doğrular/uygular; sonucu
+    /// oyuncuya, (başarılıysa) yetenek yayınını bölgeye gönderir.
+    /// </summary>
+    public async Task HandleSkillUseAsync(PlayerEntity player, PacketReader reader)
+    {
+        int skillId = reader.ReadInt();
+        uint targetId = (uint)reader.ReadInt();
+
+        SkillUseResult result = await _skillService.UseSkillAsync(player, skillId, targetId);
+
+        byte[] resultPacket = new PacketBuilder(PacketOpcodes.S_SKILL_RESULT)
+            .WriteInt(skillId)
+            .WriteByte((byte)result)
+            .WriteInt(player.MP)
+            .Build();
+        Send(player.Connection, resultPacket);
+
+        if (result == SkillUseResult.Success)
+        {
+            byte[] castPacket = new PacketBuilder(PacketOpcodes.S_SKILL_CAST)
+                .WriteInt((int)player.UniqueId)
+                .WriteInt(skillId)
+                .WriteInt((int)targetId)
+                .Build();
+            BroadcastToRegion(player.RegionId, castPacket, null);
+
+            // Hedef öldüyse ölüm bildir.
+            EntityBase? target = _world.GetEntity(targetId);
+            if (target != null && target.State == EntityState.Dead)
+                await HandleEntityDeathAsync(target);
+        }
+    }
+
+    /// <summary>
+    /// C_RESURRECTION: oyuncuyu kısmi HP/MP ile diriltir ve durumunu günceller.
+    /// </summary>
+    public void HandleResurrection(PlayerEntity player, PacketReader reader)
+    {
+        if (player.State != EntityState.Dead)
+            return;
+
+        player.HP = Math.Max(1, player.MaxHP / 2);
+        player.MP = Math.Max(1, player.MaxMP / 2);
+        player.State = EntityState.Idle;
+        player.IsInCombat = false;
+
+        // Güncel canlılığı istemciye bildir.
+        byte[] hpPacket = new PacketBuilder(PacketOpcodes.S_HP_UPDATE)
+            .WriteInt((int)player.UniqueId)
+            .WriteInt(player.HP)
+            .WriteInt(player.MaxHP)
+            .Build();
+        Send(player.Connection, hpPacket);
+
+        Log.Debug("Oyuncu dirildi: {Char}", player.CharName);
+    }
+
+    /// <summary>
+    /// Bir varlığın ölümünü bölgeye bildirir; canavar ise bölgeden kaldırıp respawn zamanlar.
+    /// </summary>
+    private async Task HandleEntityDeathAsync(EntityBase target)
+    {
+        byte[] deathPacket = new PacketBuilder(PacketOpcodes.S_ENTITY_DEATH)
+            .WriteInt((int)target.UniqueId)
+            .WriteByte((byte)target.Type)
+            .Build();
+        BroadcastToRegion(target.RegionId, deathPacket, null);
+
+        if (target is MonsterEntity monster)
+        {
+            Region? region = _world.GetRegion(monster.RegionId);
+            region?.OnEntityLeave(monster);
+            await _spawnService.ScheduleRespawnAsync(monster, monster.RespawnDelaySeconds);
+        }
+    }
+
+    // ==================== Faz 5: Alkimi, Party, Guild işleyicileri ====================
+
+    /// <summary>
+    /// C_ALCHEMY_REQUEST: [itemSlot(byte)] [stoneSlot(byte)]. Eşyayı güçlendirir ve
+    /// S_ALCHEMY_RESULT ile sonucu gönderir.
+    /// </summary>
+    public async Task HandleAlchemyRequestAsync(PlayerEntity player, PacketReader reader)
+    {
+        byte itemSlot = reader.ReadByte();
+        byte stoneSlot = reader.ReadByte();
+
+        AlchemyResult result = await _alchemyService.ProcessEnhanceAsync(player, itemSlot, stoneSlot);
+
+        byte[] packet = new PacketBuilder(PacketOpcodes.S_ALCHEMY_RESULT)
+            .WriteLong(result.ItemId64)
+            .WriteByte((byte)(result.Success ? 1 : 0))
+            .WriteByte(result.NewOptLevel)
+            .WriteByte((byte)(result.ItemDestroyed ? 1 : 0))
+            .Build();
+        Send(player.Connection, packet);
+
+        // Güçlendirilen/yok edilen slotu senkronla.
+        ItemData? item = player.Inventory.FirstOrDefault(s => s.Slot == itemSlot)?.Item;
+        Send(player.Connection, _inventoryService.BuildSlotUpdatePacket(itemSlot, item));
+    }
+
+    /// <summary>
+    /// C_PARTY_CREATE: oyuncu için yeni bir grup oluşturur ve S_PARTY_DATA gönderir.
+    /// </summary>
+    public void HandlePartyCreate(PlayerEntity player, PacketReader reader)
+    {
+        Party party = _partyService.CreateParty(player);
+        _partyService.BroadcastToParty(party, BuildPartyDataPacket(party));
+    }
+
+    /// <summary>
+    /// C_PARTY_INVITE: [targetId(int)]. Hedefi davet eder (basitleştirilmiş: anında katılım)
+    /// ve gruba güncel veriyi yayınlar.
+    /// </summary>
+    public void HandlePartyInvite(PlayerEntity player, PacketReader reader)
+    {
+        uint targetId = (uint)reader.ReadInt();
+        PlayerEntity? target = _world.GetPlayer(targetId);
+
+        Party? party = _partyService.GetPlayerParty(player.UniqueId)
+                       ?? _partyService.CreateParty(player);
+
+        if (target != null && _partyService.InvitePlayer(party, target))
+            _partyService.BroadcastToParty(party, BuildPartyDataPacket(party));
+    }
+
+    /// <summary>
+    /// C_GUILD_CREATE: [guildName(string)]. Yeni lonca oluşturur ve S_GUILD_DATA gönderir.
+    /// </summary>
+    public async Task HandleGuildCreateAsync(PlayerEntity player, PacketReader reader)
+    {
+        string guildName = reader.ReadString();
+        Guild guild = await _guildService.CreateGuildAsync(player, guildName);
+        Send(player.Connection, BuildGuildDataPacket(guild));
+    }
+
     // ==================== Paket üreticileri ====================
+
+    /// <summary>
+    /// S_ATTACK_RESULT: [attackerId(int)] [targetId(int)] [damage(int)]
+    /// [isCritical(byte)] [isTargetDead(byte)].
+    /// </summary>
+    public byte[] BuildAttackResultPacket(CombatResult result)
+    {
+        return new PacketBuilder(PacketOpcodes.S_ATTACK_RESULT)
+            .WriteInt((int)result.AttackerId)
+            .WriteInt((int)result.TargetId)
+            .WriteInt(result.Damage)
+            .WriteByte((byte)(result.IsCritical ? 1 : 0))
+            .WriteByte((byte)(result.IsTargetDead ? 1 : 0))
+            .Build();
+    }
+
+    /// <summary>
+    /// S_PARTY_DATA: [partyId(int)] [memberCount(byte)] her üye için:
+    /// [uniqueId(int)] [name(string)] [level(byte)] [hp(int)] [maxHp(int)] [mp(int)] [maxMp(int)].
+    /// </summary>
+    public byte[] BuildPartyDataPacket(Party party)
+    {
+        var builder = new PacketBuilder(PacketOpcodes.S_PARTY_DATA)
+            .WriteInt(party.Id)
+            .WriteByte((byte)party.Members.Count);
+
+        foreach (PlayerEntity m in party.Members)
+        {
+            builder.WriteInt((int)m.UniqueId)
+                   .WriteString(m.CharName)
+                   .WriteByte(m.Level)
+                   .WriteInt(m.HP)
+                   .WriteInt(m.MaxHP)
+                   .WriteInt(m.MP)
+                   .WriteInt(m.MaxMP);
+        }
+
+        return builder.Build();
+    }
+
+    /// <summary>
+    /// S_GUILD_DATA: [guildId(int)] [guildName(string)] [level(byte)] [memberCount(byte)]
+    /// her üye için: [name(string)] [rank(byte)].
+    /// </summary>
+    public byte[] BuildGuildDataPacket(Guild guild)
+    {
+        var builder = new PacketBuilder(PacketOpcodes.S_GUILD_DATA)
+            .WriteInt(guild.Id)
+            .WriteString(guild.Name)
+            .WriteByte((byte)guild.Level)
+            .WriteByte((byte)guild.Members.Count);
+
+        foreach (GuildMember m in guild.Members)
+            builder.WriteString(m.CharName).WriteByte(m.Rank);
+
+        return builder.Build();
+    }
+
+    // ==================== Paket üreticileri (Faz 2) ====================
 
     /// <summary>
     /// S_ENTITY_MOVE: [uniqueId(int)] [x,y,z(float)] [angle(float)].

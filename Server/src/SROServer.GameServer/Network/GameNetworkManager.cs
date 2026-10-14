@@ -292,6 +292,36 @@ public sealed class GameNetworkManager : IDisposable
                     await _packetHandler.HandleShopSellAsync(player, reader);
                     break;
 
+                // --- Faz 4: Savaş & Skill ---
+                case PacketOpcodes.C_ATTACK_REQUEST:
+                    await _packetHandler.HandleAttackRequestAsync(player, reader);
+                    break;
+
+                case PacketOpcodes.C_SKILL_USE:
+                    await _packetHandler.HandleSkillUseAsync(player, reader);
+                    break;
+
+                case PacketOpcodes.C_RESURRECTION:
+                    _packetHandler.HandleResurrection(player, reader);
+                    break;
+
+                // --- Faz 5: Alkimi, Party, Guild ---
+                case PacketOpcodes.C_ALCHEMY_REQUEST:
+                    await _packetHandler.HandleAlchemyRequestAsync(player, reader);
+                    break;
+
+                case PacketOpcodes.C_PARTY_CREATE:
+                    _packetHandler.HandlePartyCreate(player, reader);
+                    break;
+
+                case PacketOpcodes.C_PARTY_INVITE:
+                    _packetHandler.HandlePartyInvite(player, reader);
+                    break;
+
+                case PacketOpcodes.C_GUILD_CREATE:
+                    await _packetHandler.HandleGuildCreateAsync(player, reader);
+                    break;
+
                 default:
                     Log.Warning("Bilinmeyen oyun opcode'u: 0x{Opcode:X4}", reader.Opcode);
                     break;

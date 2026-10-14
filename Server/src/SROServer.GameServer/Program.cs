@@ -76,11 +76,35 @@ try
         Log.Warning(ex, "Eşya referans önbelleği yüklenemedi (veritabanı yok olabilir).");
     }
 
+    // Yetenek referans önbelleğini yükle (veritabanı yoksa boş kalır, sunucu yine başlar).
+    SkillReferenceCache skillCache = SkillReferenceCache.Instance;
+    try
+    {
+        await using var skillConnection = new SqlConnection(shardCs);
+        await skillCache.LoadAsync(skillConnection);
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "Yetenek referans önbelleği yüklenemedi (veritabanı yok olabilir).");
+    }
+
     var movementService = new MovementService(world, sectorManager, characterRepository);
     var spawnService = new SpawnService(world, spawnRepository);
     var inventoryService = new InventoryService(inventoryRepository, itemCache);
     var shopService = new ShopService(inventoryRepository, itemCache);
-    var packetHandler = new GamePacketHandler(world, movementService, inventoryService, shopService);
+
+    // Faz 4: Savaş & Skill servisleri.
+    var combatService = new CombatService(characterRepository);
+    var skillService = new SkillService(skillCache, combatService, world);
+
+    // Faz 5: Alkimi, Party, Guild servisleri.
+    var alchemyService = new AlchemyService(inventoryRepository);
+    var partyService = new PartyService();
+    var guildService = new GuildService();
+
+    var packetHandler = new GamePacketHandler(
+        world, movementService, inventoryService, shopService,
+        combatService, skillService, alchemyService, partyService, guildService, spawnService);
 
     // 5) Spawn noktalarını yükle ve önceden tanımlı bölgelerde mob üret
     //    (veritabanı yoksa uyarı loglanır, sunucu yine de başlar).

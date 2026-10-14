@@ -97,6 +97,24 @@ public sealed class WorldManager
     public PlayerEntity? GetPlayerByJID(int jid) =>
         _jidToUniqueId.TryGetValue(jid, out uint uid) ? GetPlayer(uid) : null;
 
+    /// <summary>
+    /// Benzersiz kimliğe göre herhangi bir varlığı (oyuncu, canavar, NPC) tüm bölgelerde
+    /// arar. Önce oyuncu indeksine, bulunamazsa bölgelerdeki varlıklara bakar. Yoksa null.
+    /// </summary>
+    public EntityBase? GetEntity(uint uniqueId)
+    {
+        if (_players.TryGetValue(uniqueId, out PlayerEntity? player))
+            return player;
+
+        foreach (Region region in _regions.Values)
+        {
+            if (region.Entities.TryGetValue(uniqueId, out EntityBase? entity))
+                return entity;
+        }
+
+        return null;
+    }
+
     /// <summary>Aktif oyuncu sayısı.</summary>
     public int PlayerCount => _players.Count;
 
