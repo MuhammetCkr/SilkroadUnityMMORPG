@@ -31,6 +31,12 @@ namespace SROClient.Gameplay
         /// <summary>Oyuncunun sahnedeki hareket kontrolcüsü (spawn edildiğinde atanır).</summary>
         public CharacterMovementController MovementController { get; set; }
 
+        /// <summary>
+        /// Oyuncunun o an seçili (hedeflenen) varlığının UID'si (Faz 4). Hedef yoksa 0.
+        /// Saldırı ve hedefli yetenekler bu değeri kullanır.
+        /// </summary>
+        public uint SelectedTargetId { get; set; }
+
         // --- Değişim olayları (HUD abone olur) ---
 
         /// <summary>HP değiştiğinde tetiklenir (güncel HP, maksimum HP).</summary>

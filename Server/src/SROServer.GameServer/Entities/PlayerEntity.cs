@@ -60,4 +60,39 @@ public sealed class PlayerEntity : EntityBase
 
     /// <summary>Oyuncunun altın (para) miktarı.</summary>
     public long Gold { get; set; }
+
+    // --- Savaş & stat değerleri (Faz 4) ---
+
+    /// <summary>Güç (STR) — fiziksel hasar ve HP'yi etkiler.</summary>
+    public byte STR { get; set; } = 20;
+
+    /// <summary>Zeka (INT) — büyü hasarı ve MP'yi etkiler.</summary>
+    public byte INT { get; set; } = 20;
+
+    /// <summary>Şans (Luck) — kritik vuruş şansını artırır.</summary>
+    public byte Luck { get; set; }
+
+    /// <summary>Savunma değeri (hasar azaltma için).</summary>
+    public int Defense { get; set; }
+
+    /// <summary>Mevcut deneyim puanı (EXP).</summary>
+    public long CurrentExp { get; set; }
+
+    /// <summary>Bir sonraki seviyeye geçiş için gereken toplam EXP.</summary>
+    public long NextLevelExp { get; set; } = 100;
+
+    /// <summary>Öğrenilmiş yetenek kimlikleri.</summary>
+    public List<int> LearnedSkills { get; set; } = new();
+
+    /// <summary>Yetenek bekleme süreleri: skillId -> beklemenin biteceği zaman.</summary>
+    public Dictionary<int, DateTime> SkillCooldowns { get; set; } = new();
+
+    /// <summary>Oyuncu şu anda savaşta mı?</summary>
+    public bool IsInCombat { get; set; }
+
+    /// <summary>En son saldırı yaptığı zaman (saldırı hızı throttle için).</summary>
+    public DateTime LastAttackTime { get; set; } = DateTime.MinValue;
+
+    /// <summary>Şu anki hedef varlığın benzersiz kimliği (varsa).</summary>
+    public uint? TargetEntityId { get; set; }
 }

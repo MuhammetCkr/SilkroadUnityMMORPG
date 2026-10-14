@@ -31,18 +31,19 @@ SilkroadUnityMMORPG/
 │   ├── src/
 │   │   ├── SROServer.Shared/    # Ortak: paket oluşturucu/okuyucu, opcode'lar, modeller (SROVector3, SectorPosition, ItemData, InventorySlot)
 │   │   ├── SROServer.Auth/      # Kimlik doğrulama sunucusu (Faz 1)
-│   │   └── SROServer.GameServer/# Oyun sunucusu (Faz 2-3) — Entities, World, Services, Repositories, Cache, Network
+│   │   └── SROServer.GameServer/# Oyun sunucusu (Faz 2-5) — Entities, World, Services, Repositories, Cache, Network
 │   └── tests/
 │       ├── SROServer.Auth.Tests/       # Auth birim testleri (xUnit + Moq)
-│       └── SROServer.GameServer.Tests/ # Dünya & hareket birim testleri (xUnit + Moq)
+│       └── SROServer.GameServer.Tests/ # Dünya/hareket/envanter/savaş/alkimi/skill birim testleri (xUnit + Moq)
 │
 └── Client/                      # Unity proje iskeleti (Unity Editor'da açılır)
     └── Assets/Scripts/
         ├── Network/             # ServerConnection (reconnect), PacketBuilder/Reader, PacketHandler
         ├── Gameplay/            # CharacterMovementController, CameraController, EntityManager, LocalPlayer
         ├── Inventory/           # InventoryManager (singleton), InventorySlotData (Faz 3)
+        ├── Combat/              # CombatManager (singleton), SkillBar, SkillSlotUI, DamageNumber (Faz 4)
         ├── World/               # TerrainChunkLoader, ClientSectorManager
-        ├── UI/                  # LoginUI, CharacterSelectUI, HUD/, Inventory/ (InventoryUI, InventorySlotUI, ItemTooltip, DragDropHandler)
+        ├── UI/                  # LoginUI, CharacterSelectUI, HUD/, Inventory/, Alchemy/ (AlchemyUI), Party/ (PartyUI), Guild/ (GuildUI)
         ├── Managers/            # GameManager, NetworkManager (singleton)
         └── Models/              # PlayerData, ItemData, EntityData
 ```
@@ -94,8 +95,8 @@ Bağlantı ayarları `Server/src/SROServer.Auth/appsettings.json` içinden yapı
 | **Faz 1** | Auth Server + Unity Login/Karakter Seçim ekranı | ✅ Bu depoda |
 | **Faz 2** | Dünya & Hareket (Game Server, varlık senkronizasyonu) | ✅ Bu depoda |
 | **Faz 3** | Envanter & Item sistemi | ✅ Bu depoda |
-| **Faz 4** | Savaş & Skill mekanikleri | ⏳ Planlandı |
-| **Faz 5** | Alchemy, Party, Guild sistemleri | ⏳ Planlandı |
+| **Faz 4** | Savaş & Skill mekanikleri | ✅ Bu depoda |
+| **Faz 5** | Alchemy, Party, Guild sistemleri | ✅ Bu depoda |
 
 ---
 
@@ -152,6 +153,53 @@ Bağlantı ayarları `Server/src/SROServer.Auth/appsettings.json` içinden yapı
 - ✅ `ItemTooltip` (singleton): item üzerine gelince ad/açıklama/istatistik gösterimi.
 
 > Not: Unity istemci scriptleri Unity Editor içinde derlenir; sunucu çözümü `.NET 8 SDK` ile bu depoda 0 hata ile derlenir.
+
+---
+
+## Faz 4 — Tamamlananlar
+### Sunucu (SROServer.GameServer)
+- ✅ Savaş veri modelleri: `SkillData` (yetenek referansı — kod/ad, ustalık, gereken seviye, MP, bekleme süresi, menzil, hasar, hedef türü) ve `CombatResult` (saldırı sonucu — hasar, kritik, ölüm) — `SROServer.Shared`.
+- ✅ `SkillReferenceCache` (singleton): gerçek `_RefSkill` (+ `_RefSkillMastery`) tablolarını (`Basic_Code`, `Basic_Name`, `Consume_MP`, `Action_CoolTime`, `Param1` vb.) bellekte önbelleğe alır; yalnızca aktif (`Service=1`) yetenekleri yükler.
+- ✅ `CombatService`: Silkroad'dan esinlenen hasar formülü (`(STR*1.5 + INT*0.5) * yetenekÇarpanı`), savunma azaltma (en fazla %90), kritik vuruş (%5 + Luck), saldırı işleme, canavar AI saldırısı ve XP/level-up yönetimi (seviye başına HP/MP artışı + kalıcılık).
+- ✅ `SkillService`: yetenek kullanım doğrulaması (bilinen yetenek, seviye, bekleme süresi, MP), cooldown yönetimi ve `CombatService` ile hasar entegrasyonu.
+- ✅ Paket işleyicileri (`GamePacketHandler`): temel saldırı, yetenek kullanma, dirilme istekleri; varlık ölümü bildirimi ve (canavarsa) 30 sn gecikmeli respawn zamanlama (`SpawnService.ScheduleRespawnAsync`).
+- ✅ `PlayerEntity`/`MonsterEntity` savaş alanları (STR, INT, Luck, Defense, Exp, öğrenilen yetenekler/cooldown'lar; canavar için AttackPower, ExpReward, RespawnDelaySeconds) + `WorldManager.GetEntity` ve Faz 4 opcode'ları.
+- ✅ xUnit + Moq birim testleri (`CombatServiceTests` — 4 test; sabit tohumlu RNG ile belirlenimci).
+
+### İstemci (Unity)
+- ✅ `CombatManager` (singleton): `S_ATTACK_RESULT` / `S_ENTITY_DEATH` / `S_SKILL_RESULT` / `S_SKILL_CAST` işleme; saldırı, yetenek ve dirilme isteği gönderimi; UI için olaylar.
+- ✅ `SkillBar` + `SkillSlotUI`: 1-8 kısayol tuşlu yetenek çubuğu, bekleme süresi (cooldown) radial kaplaması ve seçili hedefe yetenek kullanımı.
+- ✅ `DamageNumber`: hedef üzerinde yüzen, süzülerek saydamlaşan hasar sayısı (kritik vuruşlar vurgulu).
+- ✅ `LocalPlayer.SelectedTargetId`: saldırı ve hedefli yetenekler için seçili hedef takibi.
+
+---
+
+## Faz 5 — Tamamlananlar
+### Sunucu (SROServer.GameServer)
+- ✅ `AlchemyService`: Silkroad'dan esinlenen eşya güçlendirme (plus) sistemi — seviyeye göre azalan başarı oranları (+0→+1 %80 ... +11→+12 %3), şanslı taş bonusu (+%10), +5 ve üzeri başarısızlıkta eşya yok olması, maksimum +12; güçlendirme taşı tüketimi ve kalıcılık.
+- ✅ `PartyService`: en fazla 8 üyeli grup (normal/büyük grup türü) oluşturma, davet, çıkarma, dağıtma ve gruba yayın (`BroadcastToParty`).
+- ✅ `GuildService`: bellek içi lonca yönetimi (oluşturma, üye ekleme, rütbe: Üye/Subay/Lider, seviye 1-6, GP) — `_Guild` tablosu olmadan geliştirme modunda çalışır.
+- ✅ Paket işleyicileri (`GamePacketHandler`): alkimi güçlendirme, grup oluşturma/davet, lonca oluşturma istekleri + `S_PARTY_DATA` / `S_GUILD_DATA` / `S_ALCHEMY_RESULT` paket üretimi + Faz 5 opcode'ları.
+- ✅ xUnit + Moq birim testleri (`AlchemyServiceTests`, `SkillServiceTests` — 6 test; `SROServer.GameServer.Tests` toplam 31 test, tümü geçiyor).
+
+### İstemci (Unity)
+- ✅ `AlchemyUI`: eşya + güçlendirme taşı seçimi, güçlendirme isteği ve `S_ALCHEMY_RESULT` sonucunun (başarı/başarısızlık/yok olma) gösterimi.
+- ✅ `PartyUI`: grup oluşturma/davet, üye listesi (ad, seviye, HP/MP) ve `S_PARTY_DATA` / `S_PARTY_UPDATE` ile canlı tazeleme.
+- ✅ `GuildUI`: lonca oluşturma, lonca adı/seviyesi ve üye listesi (ad + rütbe) gösterimi; `S_GUILD_DATA` işleme.
+
+---
+
+## Faz Özeti
+
+| Faz | Sunucu | İstemci | Testler | Durum |
+|-----|--------|---------|---------|-------|
+| **Faz 1** — Auth & Giriş | Auth ağ sunucusu, repository, BCrypt + token | `LoginUI`, `CharacterSelectUI`, `NetworkManager` | 5 (Auth) | ✅ |
+| **Faz 2** — Dünya & Hareket | `WorldManager`, `MovementService`, `SpawnService` | `CharacterMovementController`, `EntityManager`, HUD | 12 | ✅ |
+| **Faz 3** — Envanter & Item | `InventoryService`, `ShopService`, `ItemReferenceCache` | `InventoryManager`, `InventoryUI`, sürükle-bırak | +9 (toplam 21) | ✅ |
+| **Faz 4** — Savaş & Skill | `CombatService`, `SkillService`, `SkillReferenceCache` | `CombatManager`, `SkillBar`, `DamageNumber` | +4 | ✅ |
+| **Faz 5** — Alkimi, Party, Guild | `AlchemyService`, `PartyService`, `GuildService` | `AlchemyUI`, `PartyUI`, `GuildUI` | +6 (toplam 31) | ✅ |
+
+> Toplam: **36 birim testi** (31 GameServer + 5 Auth), tümü geçiyor. Sunucu çözümü `.NET 8 SDK` ile 0 hata / 0 uyarı ile derlenir.
 
 ### Oyun Sunucusunu Çalıştırma
 ```bash
